@@ -12,8 +12,10 @@ export default function Login() {
     // simple check (temporary)
     if (email === "basheer82475@gmail.com" && password === "Basheer@123") {
       navigate("/dashboard"); // go to dashboard
-    } else {
-      alert("Invalid credentials");
+    } else
+      
+       {
+      navigate("/pos");
     }
   };
 
