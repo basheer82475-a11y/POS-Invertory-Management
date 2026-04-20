@@ -1,17 +1,39 @@
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Login from "./pages/login";
-import Dashboard from "./pages/dashboard";
-import POS from "./pages/pos";
-import Navbar from "./components/navbar";
 
+import Layout from "./components/Layout";
+import Dashboard from "./pages/dashboard";
+import Pos from "./pages/pos";
+import Login from "./pages/login";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+
+        {/* Login Page */}
         <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/pos" element={<POS />} />
+
+        {/* Admin Dashboard */}
+        <Route
+          path="/dashboard"
+          element={
+            <Layout role="admin">
+              <Dashboard />
+            </Layout>
+          }
+        />
+
+        {/* User POS */}
+        <Route
+          path="/pos"
+          element={
+            <Layout role="user">
+              <Pos />
+            </Layout>
+          }
+        />
+
       </Routes>
     </BrowserRouter>
   );
