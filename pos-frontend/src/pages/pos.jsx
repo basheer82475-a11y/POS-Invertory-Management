@@ -5,10 +5,9 @@ export default function POS() {
 
   // ✅ Products with name & price
   const products = [
-    { id: 1, name: "Rice", price: 50 },
-    { id: 2, name: "Oil", price: 120 },
-    { id: 3, name: "Sugar", price: 40 },
-    { id: 4, name: "Milk", price: 30 },
+    { id: 1, name: "laptop", price: 50000 },
+    { id: 2, name: "Mouse", price: 500 },
+    { id: 3, name: "Keyboaed", price: 1500 },
   ];
 
   // ✅ Add to cart
