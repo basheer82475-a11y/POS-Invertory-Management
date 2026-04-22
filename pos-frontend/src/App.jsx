@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/dashboard";
 import Pos from "./pages/pos";
 import Login from "./pages/login";
+import Products from "./pages/products";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             </Layout>
           }
         />
+        <Route path="/products" element={<Products />} /> 
 
       </Routes>
     </BrowserRouter>
