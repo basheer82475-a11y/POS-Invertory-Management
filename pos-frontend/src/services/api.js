@@ -4,7 +4,7 @@ const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-// Request interceptor to add token
+// Request interceptor (keep only one)
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -16,7 +16,13 @@ API.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for 401
+// Product CRUD helpers
+export const getProducts = () => API.get("/products");
+export const createProduct = (data) => API.post("/products", data);
+export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
+export const deleteProduct = (id) => API.delete(`/products/${id}`);
+
+// Response interceptor
 API.interceptors.response.use(
   (response) => response,
   (error) => {

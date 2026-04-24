@@ -1,41 +1,77 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import Pos from "./pages/pos";
-import Login from "./pages/login";
 import Products from "./pages/products";
+import AdminProducts from "./pages/adminProducts";
+import Inventory from "./pages/inventory";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* Login Page */}
+        {/* Public Route */}
         <Route path="/" element={<Login />} />
 
-        {/* Admin Dashboard */}
+        {/* Admin Routes */}
         <Route
           path="/dashboard"
           element={
-            <Layout role="admin">
+            <ProtectedRoute requiredRole="admin" layoutRole="admin">
               <Dashboard />
-            </Layout>
+            </ProtectedRoute>
           }
         />
 
-        {/* User POS */}
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute>
+            }
+/>
+            <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute requiredRole="admin" layoutRole="admin">
+              <AdminProducts />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Shared Routes */}
         <Route
           path="/pos"
           element={
-            <Layout role="user">
+            <ProtectedRoute>
               <Pos />
-            </Layout>
+            </ProtectedRoute>
           }
         />
-        <Route path="/products" element={<Products />} /> 
 
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <Products />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventory"
+          element={
+            <ProtectedRoute>
+              <Inventory />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Fallback Route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
