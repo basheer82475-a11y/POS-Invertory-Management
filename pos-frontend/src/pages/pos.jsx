@@ -1,166 +1,131 @@
-import { useState, useEffect } from "react";
-import { API } from "../services/api";
+import React, { useEffect, useRef, useState } from "react"; import { Card, CardContent } from "@/components/ui/card"; import { Button } from "@/components/ui/button";
 
-export default function POS() {
-  const [cart, setCart] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+// NOTE: Uses html5-qrcode for camera scanning // npm install html5-qrcode import { Html5Qrcode } from "html5-qrcode";
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const { data } = await API.get("/products");
-        setProducts(data.products || []);
-      } catch (err) {
-        setError(err.response?.data?.message || "Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    };
+const PRODUCTS = [ { id: 1, name: "Item A", price: 100, barcode: "111" }, { id: 2, name: "Item B", price: 200, barcode: "222" }, { id: 3, name: "Item C", price: 300, barcode: "333" } ];
 
-    fetchProducts();
-  }, []);
+export default function POSPage() { const [cart, setCart] = useState([]); const [search, setSearch] = useState(""); const [barcodeInput, setBarcodeInput] = useState(""); const [customer, setCustomer] = useState({ name: "", phone: "" }); const [discount, setDiscount] = useState(0); const [paymentMode, setPaymentMode] = useState("Cash");
 
-  const addToCart = (product) => {
-    const exist = cart.find((item) => item._id === product._id);
+const scannerRef = useRef(null); const html5QrCodeRef = useRef(null);
 
-    if (exist) {
-      setCart(
-        cart.map((item) =>
-          item._id === product._id
-            ? { ...item, qty: item.qty + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([...cart, { ...product, qty: 1 }]);
-    }
-  };
+useEffect(() => { html5QrCodeRef.current = new Html5Qrcode("reader"); }, []);
 
-  const increaseQty = (id) => {
-    setCart(
-      cart.map((item) =>
-        item._id === id ? { ...item, qty: item.qty + 1 } : item
-      )
-    );
-  };
+const startScanner = async () => { try { await html5QrCodeRef.current.start( { facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => { handleBarcode(decodedText); } ); } catch (err) { console.error("Camera error", err); } };
 
-  const decreaseQty = (id) => {
-    setCart(
-      cart
-        .map((item) =>
-          item._id === id ? { ...item, qty: item.qty - 1 } : item
-        )
-        .filter((item) => item.qty > 0)
-    );
-  };
+const stopScanner = async () => { try { await html5QrCodeRef.current.stop(); } catch {} };
 
-  const removeItem = (id) => {
-    setCart(cart.filter((item) => item._id !== id));
-  };
+const handleBarcode = (code) => { const product = PRODUCTS.find((p) => p.barcode === code); if (product) addToCart(product); };
 
-  const total = cart.reduce(
-    (sum, item) => sum + item.price * item.qty,
-    0
-  );
+const addToCart = (product) => { setCart((prev) => { const exists = prev.find((item) => item.id === product.id); if (exists) { return prev.map((item) => item.id === product.id ? { ...item, qty: item.qty + 1 } : item ); } return [...prev, { ...product, qty: 1 }]; }); };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-lg font-medium text-gray-600">
-          Loading products...
+const updateQty = (id, delta) => { setCart((prev) => prev .map((item) => item.id === id ? { ...item, qty: item.qty + delta } : item ) .filter((item) => item.qty > 0) ); };
+
+const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0); const discountAmt = (subtotal * discount) / 100; const gst = (subtotal - discountAmt) * 0.18; const total = subtotal - discountAmt + gst;
+
+const handleCheckout = () => { const newOrder = { id: Date.now(), cart, total, customer, paymentMode, date: new Date() };
+
+const oldOrders = JSON.parse(localStorage.getItem("ordersList") || "[]");
+const updatedOrders = [...oldOrders, newOrder];
+
+localStorage.setItem("ordersList", JSON.stringify(updatedOrders));
+
+// DASHBOARD AUTO UPDATE EVENT
+window.dispatchEvent(new Event("dataUpdated"));
+
+alert("Order placed!");
+setCart([]);
+
+};
+
+const filteredProducts = PRODUCTS.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()) );
+
+return ( <div className="p-4 grid grid-cols-3 gap-4"> {/* LEFT - PRODUCTS */} <div className="col-span-2"> <input placeholder="Search product" className="border p-2 w-full mb-2" onChange={(e) => setSearch(e.target.value)} />
+
+<input
+      placeholder="Scan barcode manually"
+      className="border p-2 w-full mb-2"
+      value={barcodeInput}
+      onChange={(e) => setBarcodeInput(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") handleBarcode(barcodeInput);
+      }}
+    />
+
+    <div className="flex gap-2 mb-2">
+      <Button onClick={startScanner}>Start Camera</Button>
+      <Button onClick={stopScanner}>Stop Camera</Button>
+    </div>
+
+    <div id="reader" className="mb-4" />
+
+    <div className="grid grid-cols-3 gap-2">
+      {filteredProducts.map((p) => (
+        <Card key={p.id} onClick={() => addToCart(p)}>
+          <CardContent>
+            <h3>{p.name}</h3>
+            <p>₹{p.price}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  </div>
+
+  {/* RIGHT - CART */}
+  <div>
+    <h2 className="text-lg font-bold mb-2">Cart</h2>
+
+    {cart.map((item) => (
+      <div key={item.id} className="flex justify-between mb-2">
+        <span>{item.name}</span>
+        <div>
+          <button onClick={() => updateQty(item.id, -1)}>-</button>
+          <span className="mx-2">{item.qty}</span>
+          <button onClick={() => updateQty(item.id, 1)}>+</button>
         </div>
       </div>
-    );
-  }
+    ))}
 
-  if (error) {
-    return (
-      <div className="bg-red-100 border border-red-300 text-red-700 p-4 rounded">
-        <p className="font-semibold">Error</p>
-        <p>{error}</p>
-      </div>
-    );
-  }
+    <input
+      placeholder="Customer Name"
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+    />
 
-  return (
-    <div className="flex gap-4">
-      {/* 🛍 Products */}
-      <div className="w-2/3 bg-gray-100 p-4 rounded">
-        <h2 className="text-xl font-bold mb-3">Products</h2>
+    <input
+      placeholder="Phone"
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+    />
 
-        {products.length === 0 ? (
-          <p className="text-gray-500">No products available</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {products.map((p) => (
-              <div
-                key={p._id}
-                onClick={() => addToCart(p)}
-                className="bg-white p-4 rounded shadow cursor-pointer hover:bg-blue-100 transition"
-              >
-                <h3 className="font-semibold">{p.name}</h3>
-                <p className="text-gray-600">₹{p.price}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Stock: {p.stock}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+    <select
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setDiscount(Number(e.target.value))}
+    >
+      <option value={0}>No Discount</option>
+      <option value={5}>5%</option>
+      <option value={10}>10%</option>
+      <option value={15}>15%</option>
+    </select>
 
-      {/* 🧾 Cart */}
-      <div className="w-1/3 bg-white p-4 rounded shadow">
-        <h2 className="text-xl font-bold mb-3">Cart</h2>
+    <select
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setPaymentMode(e.target.value)}
+    >
+      <option>Cash</option>
+      <option>Card</option>
+      <option>UPI</option>
+    </select>
 
-        {cart.length === 0 && <p className="text-gray-500">No items</p>}
-
-        {cart.map((item) => (
-          <div key={item._id} className="mb-3 border-b pb-2">
-            <div className="flex justify-between">
-              <span>{item.name}</span>
-              <span>₹{item.price * item.qty}</span>
-            </div>
-
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => decreaseQty(item._id)}
-                className="bg-gray-300 px-2 rounded"
-              >
-                -
-              </button>
-
-              <span>{item.qty}</span>
-
-              <button
-                onClick={() => increaseQty(item._id)}
-                className="bg-gray-300 px-2 rounded"
-              >
-                +
-              </button>
-
-              <button
-                onClick={() => removeItem(item._id)}
-                className="bg-red-500 text-white px-2 rounded ml-auto"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
-
-        <hr className="my-3" />
-
-        <h3 className="font-bold text-lg">Total: ₹{total}</h3>
-
-        <button className="bg-green-500 text-white w-full mt-3 py-2 rounded hover:bg-green-600 transition">
-          Checkout
-        </button>
-      </div>
+    <div className="mt-4">
+      <p>Subtotal: ₹{subtotal}</p>
+      <p>GST (18%): ₹{gst.toFixed(2)}</p>
+      <p>Total: ₹{total.toFixed(2)}</p>
     </div>
-  );
-}
 
+    <Button className="mt-4 w-full" onClick={handleCheckout}>
+      Checkout
+    </Button>
+  </div>
+</div>
+
+); }
