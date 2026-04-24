@@ -19,12 +19,13 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.user.role);
 
+      // Redirect based on role
       if (data.user.role === "admin") {
         navigate("/admin/products");
-      } else if (data.user.role === "cashier") {
-        navigate("/pos");
+      } else if (data.user.role === "manager") {
+        navigate("/inventory");
       } else {
-        navigate("/dashboard");
+        navigate("/pos");
       }
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
