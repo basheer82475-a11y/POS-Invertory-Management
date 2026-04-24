@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import Pos from "./pages/pos";
@@ -13,10 +14,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Login */}
+        {/* Public Route */}
         <Route path="/" element={<Login />} />
 
-        {/* Admin-only routes */}
+        {/* Admin Routes */}
         <Route
           path="/dashboard"
           element={
@@ -25,16 +26,23 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/products"
           element={
-            <ProtectedRoute requiredRole="admin" layoutRole="admin" className="p-6">
+            <ProtectedRoute>
+            }
+/>
+            <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute requiredRole="admin" layoutRole="admin">
               <AdminProducts />
             </ProtectedRoute>
           }
         />
 
-        {/* Shared authenticated routes */}
+        {/* Shared Routes */}
         <Route
           path="/pos"
           element={
@@ -43,24 +51,26 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/products"
           element={
-            <ProtectedRoute className="p-6">
+            <ProtectedRoute>
               <Products />
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/inventory"
           element={
-            <ProtectedRoute className="p-6">
+            <ProtectedRoute>
               <Inventory />
             </ProtectedRoute>
           }
         />
 
-        {/* Fallback */}
+        {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
@@ -68,4 +78,3 @@ function App() {
 }
 
 export default App;
-
