@@ -1,16 +1,18 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Layout from "./components/Layout";
 import Dashboard from "./pages/dashboard";
 import Pos from "./pages/pos";
 import Login from "./pages/login";
+import Products from "./pages/products";
+
+const isAuthenticated = () => !!localStorage.getItem("token");
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* Login Page */}
         <Route path="/" element={<Login />} />
 
@@ -18,9 +20,13 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <Layout role="admin">
-              <Dashboard />
-            </Layout>
+            isAuthenticated() ? (
+              <Layout role="admin">
+                <Dashboard />
+              </Layout>
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
 
@@ -28,15 +34,35 @@ function App() {
         <Route
           path="/pos"
           element={
-            <Layout role="user">
-              <Pos />
-            </Layout>
+            isAuthenticated() ? (
+              <Layout role="user">
+                <Pos />
+              </Layout>
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
 
+        {/* Products page for cashier/admin */}
+        <Route
+          path="/products"
+          element={
+            isAuthenticated() ? (
+              <Layout role="user">
+                <div className="p-6">
+                  <Products />
+                </div>
+              </Layout>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
+
