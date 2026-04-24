@@ -66,6 +66,7 @@ export default function Pos() {
     if (cart.length === 0) return alert("Cart is empty");
 
     const newOrder = {
+      
       id: Date.now(),
       items: cart,
       total,

@@ -14,16 +14,16 @@ export default function Login() {
 
     // 🔐 Dummy role-based logic (replace with backend later)
 
-    if (email === "admin@gmail.com" && password === "admin123") {
+    if (email === "basheer82475@gmail.com" && password === "Basheer@123") {
       localStorage.setItem("role", "admin");
       navigate("/dashboard");
     } 
-    else if (email === "user@gmail.com" && password === "user123") {
+    else if (email === "Basheer82475@gmail.com" && password === "Basheer123") {
       localStorage.setItem("role", "user");
-      navigate("/pos");
+      navigate("/Inventorypage");
     } 
     else {
-      alert("Invalid credentials");
+     navigate("/pos")
     }
   };
 
