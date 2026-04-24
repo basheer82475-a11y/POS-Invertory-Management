@@ -1,138 +1,131 @@
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react"; import { Card, CardContent } from "@/components/ui/card"; import { Button } from "@/components/ui/button";
 
-export default function POS() {
-  const [cart, setCart] = useState([]);
+// NOTE: Uses html5-qrcode for camera scanning // npm install html5-qrcode import { Html5Qrcode } from "html5-qrcode";
 
-  // ✅ Products with name & price
-  const products = [
-    { id: 1, name: "laptop", price: 50000 },
-    { id: 2, name: "Mouse", price: 500 },
-    { id: 3, name: "Keyboaed", price: 1500 },
-  ];
+const PRODUCTS = [ { id: 1, name: "Item A", price: 100, barcode: "111" }, { id: 2, name: "Item B", price: 200, barcode: "222" }, { id: 3, name: "Item C", price: 300, barcode: "333" } ];
 
-  // ✅ Add to cart
-  const addToCart = (product) => {
-    const exist = cart.find((item) => item.id === product.id);
+export default function POSPage() { const [cart, setCart] = useState([]); const [search, setSearch] = useState(""); const [barcodeInput, setBarcodeInput] = useState(""); const [customer, setCustomer] = useState({ name: "", phone: "" }); const [discount, setDiscount] = useState(0); const [paymentMode, setPaymentMode] = useState("Cash");
 
-    if (exist) {
-      // increase quantity
-      setCart(
-        cart.map((item) =>
-          item.id === product.id
-            ? { ...item, qty: item.qty + 1 }
-            : item
-        )
-      );
-    } else {
-      // add new item
-      setCart([...cart, { ...product, qty: 1 }]);
-    }
-  };
+const scannerRef = useRef(null); const html5QrCodeRef = useRef(null);
 
-  // ➕ Increase qty
-  const increaseQty = (id) => {
-    setCart(
-      cart.map((item) =>
-        item.id === id ? { ...item, qty: item.qty + 1 } : item
-      )
-    );
-  };
+useEffect(() => { html5QrCodeRef.current = new Html5Qrcode("reader"); }, []);
 
-  // ➖ Decrease qty
-  const decreaseQty = (id) => {
-    setCart(
-      cart
-        .map((item) =>
-          item.id === id ? { ...item, qty: item.qty - 1 } : item
-        )
-        .filter((item) => item.qty > 0)
-    );
-  };
+const startScanner = async () => { try { await html5QrCodeRef.current.start( { facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => { handleBarcode(decodedText); } ); } catch (err) { console.error("Camera error", err); } };
 
-  // ❌ Remove item
-  const removeItem = (id) => {
-    setCart(cart.filter((item) => item.id !== id));
-  };
+const stopScanner = async () => { try { await html5QrCodeRef.current.stop(); } catch {} };
 
-  // 💰 Total
-  const total = cart.reduce(
-    (sum, item) => sum + item.price * item.qty,
-    0
-  );
+const handleBarcode = (code) => { const product = PRODUCTS.find((p) => p.barcode === code); if (product) addToCart(product); };
 
-  return (
-    <div className="flex gap-4">
+const addToCart = (product) => { setCart((prev) => { const exists = prev.find((item) => item.id === product.id); if (exists) { return prev.map((item) => item.id === product.id ? { ...item, qty: item.qty + 1 } : item ); } return [...prev, { ...product, qty: 1 }]; }); };
 
-      {/* 🛍 Products */}
-      <div className="w-2/3 bg-gray-100 p-4 rounded">
-        <h2 className="text-xl font-bold mb-3">Products</h2>
+const updateQty = (id, delta) => { setCart((prev) => prev .map((item) => item.id === id ? { ...item, qty: item.qty + delta } : item ) .filter((item) => item.qty > 0) ); };
 
-        <div className="grid grid-cols-3 gap-3">
-          {products.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => addToCart(p)}
-              className="bg-white p-4 rounded shadow cursor-pointer hover:bg-blue-100"
-            >
-              <h3 className="font-semibold">{p.name}</h3>
-              <p>₹{p.price}</p>
-            </div>
-          ))}
+const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0); const discountAmt = (subtotal * discount) / 100; const gst = (subtotal - discountAmt) * 0.18; const total = subtotal - discountAmt + gst;
+
+const handleCheckout = () => { const newOrder = { id: Date.now(), cart, total, customer, paymentMode, date: new Date() };
+
+const oldOrders = JSON.parse(localStorage.getItem("ordersList") || "[]");
+const updatedOrders = [...oldOrders, newOrder];
+
+localStorage.setItem("ordersList", JSON.stringify(updatedOrders));
+
+// DASHBOARD AUTO UPDATE EVENT
+window.dispatchEvent(new Event("dataUpdated"));
+
+alert("Order placed!");
+setCart([]);
+
+};
+
+const filteredProducts = PRODUCTS.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()) );
+
+return ( <div className="p-4 grid grid-cols-3 gap-4"> {/* LEFT - PRODUCTS */} <div className="col-span-2"> <input placeholder="Search product" className="border p-2 w-full mb-2" onChange={(e) => setSearch(e.target.value)} />
+
+<input
+      placeholder="Scan barcode manually"
+      className="border p-2 w-full mb-2"
+      value={barcodeInput}
+      onChange={(e) => setBarcodeInput(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") handleBarcode(barcodeInput);
+      }}
+    />
+
+    <div className="flex gap-2 mb-2">
+      <Button onClick={startScanner}>Start Camera</Button>
+      <Button onClick={stopScanner}>Stop Camera</Button>
+    </div>
+
+    <div id="reader" className="mb-4" />
+
+    <div className="grid grid-cols-3 gap-2">
+      {filteredProducts.map((p) => (
+        <Card key={p.id} onClick={() => addToCart(p)}>
+          <CardContent>
+            <h3>{p.name}</h3>
+            <p>₹{p.price}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  </div>
+
+  {/* RIGHT - CART */}
+  <div>
+    <h2 className="text-lg font-bold mb-2">Cart</h2>
+
+    {cart.map((item) => (
+      <div key={item.id} className="flex justify-between mb-2">
+        <span>{item.name}</span>
+        <div>
+          <button onClick={() => updateQty(item.id, -1)}>-</button>
+          <span className="mx-2">{item.qty}</span>
+          <button onClick={() => updateQty(item.id, 1)}>+</button>
         </div>
       </div>
+    ))}
 
-      {/* 🧾 Cart */}
-      <div className="w-1/3 bg-white p-4 rounded shadow">
-        <h2 className="text-xl font-bold mb-3">Cart</h2>
+    <input
+      placeholder="Customer Name"
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+    />
 
-        {cart.length === 0 && <p>No items</p>}
+    <input
+      placeholder="Phone"
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+    />
 
-        {cart.map((item) => (
-          <div key={item.id} className="mb-3 border-b pb-2">
+    <select
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setDiscount(Number(e.target.value))}
+    >
+      <option value={0}>No Discount</option>
+      <option value={5}>5%</option>
+      <option value={10}>10%</option>
+      <option value={15}>15%</option>
+    </select>
 
-            <div className="flex justify-between">
-              <span>{item.name}</span>
-              <span>₹{item.price * item.qty}</span>
-            </div>
+    <select
+      className="border p-2 w-full mt-2"
+      onChange={(e) => setPaymentMode(e.target.value)}
+    >
+      <option>Cash</option>
+      <option>Card</option>
+      <option>UPI</option>
+    </select>
 
-            {/* Quantity controls */}
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => decreaseQty(item.id)}
-                className="bg-gray-300 px-2 rounded"
-              >
-                -
-              </button>
-
-              <span>{item.qty}</span>
-
-              <button
-                onClick={() => increaseQty(item.id)}
-                className="bg-gray-300 px-2 rounded"
-              >
-                +
-              </button>
-
-              <button
-                onClick={() => removeItem(item.id)}
-                className="bg-red-500 text-white px-2 rounded ml-auto"
-              >
-                Remove
-              </button>
-            </div>
-
-          </div>
-        ))}
-
-        <hr className="my-3" />
-
-        <h3 className="font-bold text-lg">Total: ₹{total}</h3>
-
-        <button className="bg-green-500 text-white w-full mt-3 py-2 rounded">
-          Checkout
-        </button>
-      </div>
-
+    <div className="mt-4">
+      <p>Subtotal: ₹{subtotal}</p>
+      <p>GST (18%): ₹{gst.toFixed(2)}</p>
+      <p>Total: ₹{total.toFixed(2)}</p>
     </div>
-  );
-}
+
+    <Button className="mt-4 w-full" onClick={handleCheckout}>
+      Checkout
+    </Button>
+  </div>
+</div>
+
+); }

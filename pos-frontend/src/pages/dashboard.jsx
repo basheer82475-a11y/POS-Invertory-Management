@@ -1,106 +1,98 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 const Dashboard = () => {
-  // 👉 Sample data (replace with API later)
-  const purchases = [
-    { id: 1, product: "Laptop", price: 50000, quantity: 1, date: "2026-04-18" },
-    { id: 2, product: "Mouse", price: 500, quantity: 2, date: "2026-04-18" },
-    { id: 3, product: "Keyboard", price: 1500, quantity: 1, date: "2026-04-19" },
-  ];
+  const [orders, setOrders] = useState([]);
+  const [revenue, setRevenue] = useState(0);
 
-  // 👉 Calculations
-  const totalRevenue = purchases.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
+  const loadData = () => {
+    const storedOrders = JSON.parse(localStorage.getItem("ordersList")) || [];
 
-  const totalOrders = purchases.length;
+    setOrders(storedOrders);
 
-  const totalItems = purchases.reduce(
-    (acc, item) => acc + item.quantity,
-    0
-  );
+    const totalRevenue = storedOrders.reduce(
+      (sum, order) => sum + order.total,
+      0
+    );
 
-  // 👉 Top product
-  const productCount = {};
-  purchases.forEach((item) => {
-    productCount[item.product] =
-      (productCount[item.product] || 0) + item.quantity;
-  });
+    setRevenue(totalRevenue);
+  };
 
-  const topProduct = Object.keys(productCount).reduce((a, b) =>
-    productCount[a] > productCount[b] ? a : b
-  );
+  useEffect(() => {
+    loadData();
+
+    // 🔥 Listen for updates from POS
+    const handleUpdate = () => {
+      loadData();
+    };
+
+    window.addEventListener("dataUpdated", handleUpdate);
+
+    return () => {
+      window.removeEventListener("dataUpdated", handleUpdate);
+    };
+  }, []);
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
-        Sales Dashboard
-      </h1>
+    <div style={{ padding: "20px" }}>
+      <h2>Admin Dashboard</h2>
 
-      {/* 🔷 Stats Cards */}
-      <div className="grid grid-cols-4 gap-6 mb-8">
-
-        <div className="bg-white p-5 rounded-xl shadow">
-          <h2 className="text-gray-500">Total Revenue</h2>
-          <p className="text-2xl font-bold text-green-600">
-            ₹{totalRevenue}
-          </p>
+      <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
+        {/* Revenue */}
+        <div style={cardStyle}>
+          <h3>Revenue</h3>
+          <p>₹ {revenue}</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow">
-          <h2 className="text-gray-500">Total Orders</h2>
-          <p className="text-2xl font-bold text-blue-600">
-            {totalOrders}
-          </p>
+        {/* Orders */}
+        <div style={cardStyle}>
+          <h3>Orders</h3>
+          <p>{orders.length}</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow">
-          <h2 className="text-gray-500">Items Sold</h2>
-          <p className="text-2xl font-bold text-purple-600">
-            {totalItems}
-          </p>
+        {/* Stock (Static for now) */}
+        <div style={cardStyle}>
+          <h3>Stock</h3>
+          <p>120</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow">
-          <h2 className="text-gray-500">Top Product</h2>
-          <p className="text-xl font-bold text-orange-600">
-            {topProduct}
-          </p>
+        {/* Low Stock */}
+        <div style={cardStyle}>
+          <h3>Low Stock</h3>
+          <p>5 items</p>
         </div>
-
       </div>
 
-      {/* 🔷 Recent Purchases Table */}
-      <div className="bg-white rounded-xl shadow p-5">
-        <h2 className="text-xl font-semibold mb-4">Recent Purchases</h2>
-
-        <table className="w-full text-left">
-          <thead>
-            <tr className="text-gray-600 border-b">
-              <th className="py-2">Product</th>
-              <th>Price</th>
-              <th>Qty</th>
-              <th>Total</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {purchases.map((item) => (
-              <tr key={item.id} className="border-b hover:bg-gray-50">
-                <td className="py-2">{item.product}</td>
-                <td>₹{item.price}</td>
-                <td>{item.quantity}</td>
-                <td>₹{item.price * item.quantity}</td>
-                <td>{item.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Orders List */}
+      <div style={{ marginTop: "30px" }}>
+        <h3>Recent Orders</h3>
+        {orders.length === 0 ? (
+          <p>No orders yet</p>
+        ) : (
+          orders.map((order) => (
+            <div key={order.id} style={orderStyle}>
+              <p><b>Order ID:</b> {order.id}</p>
+              <p><b>Total:</b> ₹ {order.total}</p>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
+};
+
+const cardStyle = {
+  flex: 1,
+  padding: "20px",
+  background: "#f5f5f5",
+  borderRadius: "10px",
+  textAlign: "center",
+};
+
+const orderStyle = {
+  padding: "10px",
+  border: "1px solid #ddd",
+  marginTop: "10px",
+  borderRadius: "5px",
 };
 
 export default Dashboard;

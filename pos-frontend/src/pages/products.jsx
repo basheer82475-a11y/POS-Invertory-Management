@@ -46,9 +46,11 @@ export default function Products() {
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Products</h1>
+feature/product-list-ui
         <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition">
           Add Product
         </button>
+ main
       </div>
 
       {products.length === 0 ? (

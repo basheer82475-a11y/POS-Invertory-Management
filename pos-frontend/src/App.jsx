@@ -1,7 +1,9 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import Pos from "./pages/pos";
 import Login from "./pages/login";
@@ -16,7 +18,7 @@ function App() {
         {/* Login Page */}
         <Route path="/" element={<Login />} />
 
-        {/* Admin Dashboard */}
+        {/* Admin Routes */}
         <Route
           path="/dashboard"
           element={
@@ -30,7 +32,7 @@ function App() {
           }
         />
 
-        {/* User POS */}
+        {/* Shared Routes */}
         <Route
           path="/pos"
           element={
