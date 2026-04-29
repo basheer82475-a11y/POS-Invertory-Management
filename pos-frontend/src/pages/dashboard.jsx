@@ -1,126 +1,147 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    revenue: 0,
-    orders: 0,
-    stock: 0,
-    lowStock: 0,
-  });
-
-  const [recentOrders, setRecentOrders] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
 
-  const loadData = () => {
-    try {
-      const revenue = Number(localStorage.getItem("revenue")) || 0;
-
-      const orders = JSON.parse(localStorage.getItem("ordersList") || "[]");
-      const products = JSON.parse(localStorage.getItem("products") || "[]");
-
-      const totalStock = products.reduce(
-        (sum, p) => sum + (p?.stock || 0),
-        0
-      );
-
-      const lowStock = products.filter(
-        (p) => p?.stock > 0 && p.stock <= 5
-      ).length;
-
-      setStats({
-        revenue,
-        orders: orders.length,
-        stock: totalStock,
-        lowStock,
-      });
-
-      setRecentOrders(orders.slice(-5).reverse());
-      setProducts(products);
-    } catch (err) {
-      console.error("Dashboard Error:", err);
-    }
-  };
-
   useEffect(() => {
+    const loadData = () => {
+      const ordersData = JSON.parse(localStorage.getItem("orders")) || [];
+      const productsData = JSON.parse(localStorage.getItem("products")) || [];
+      setOrders(ordersData);
+      setProducts(productsData);
+    };
+
     loadData();
-    window.addEventListener("dataUpdated", loadData);
-    return () => window.removeEventListener("dataUpdated", loadData);
+    window.addEventListener("orderPlaced", loadData);
+
+    return () => window.removeEventListener("orderPlaced", loadData);
   }, []);
 
-  return (
-    <div className="p-6 space-y-6">
+  // ================= CALCULATIONS =================
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card title="Revenue" value={`₹${stats.revenue}`} />
-        <Card title="Orders" value={stats.orders} />
-        <Card title="Stock" value={stats.stock} />
-        <Card title="Low Stock" value={stats.lowStock} />
+  const today = new Date().toLocaleDateString();
+
+  const todaySales = orders
+    .filter((o) => new Date(o.time).toLocaleDateString() === today)
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+
+  const weeklyRevenue = orders
+    .slice(-7)
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const monthlyRevenue = orders
+    .slice(-30)
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const totalOrders = orders.length;
+
+  // Top Products
+  const productMap = {};
+  orders.forEach((o) => {
+    o.items.forEach((i) => {
+      productMap[i.name] = (productMap[i.name] || 0) + i.qty;
+    });
+  });
+
+  const topProducts = Object.entries(productMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  // Low Stock Alert
+  const lowStock = products.filter((p) => p.stock && p.stock < 5);
+
+  // Recent Transactions
+  const recent = [...orders].slice(-5).reverse();
+
+  // ================= UI =================
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-blue-100 p-4 rounded">
+          <p>Today's Sales</p>
+          <h2>₹{todaySales}</h2>
+        </div>
+
+        <div className="bg-green-100 p-4 rounded">
+          <p>Total Revenue</p>
+          <h2>₹{totalRevenue}</h2>
+        </div>
+
+        <div className="bg-yellow-100 p-4 rounded">
+          <p>Total Orders</p>
+          <h2>{totalOrders}</h2>
+        </div>
+
+        <div className="bg-purple-100 p-4 rounded">
+          <p>Total Products</p>
+          <h2>{products.length}</h2>
+        </div>
       </div>
 
-      {/* Recent Orders */}
-      <div className="bg-white p-4 shadow">
-        <h2 className="font-bold mb-2">Recent Orders</h2>
+      {/* Sales Overview */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold">Sales Overview</h2>
+        <p>Weekly Revenue: ₹{weeklyRevenue}</p>
+        <p>Monthly Revenue: ₹{monthlyRevenue}</p>
+      </div>
 
-        {(recentOrders || []).length === 0 ? (
-          <p>No orders yet</p>
+      {/* Top Products */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold">Top Products</h2>
+        {topProducts.map(([name, qty], index) => (
+          <div key={index} className="border p-2 mt-2">
+            {name} - Sold: {qty}
+          </div>
+        ))}
+      </div>
+
+      {/* Low Stock */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold text-red-600">
+          Low Stock Alert
+        </h2>
+        {lowStock.length === 0 ? (
+          <p>No low stock items</p>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.map((o, i) => (
-                <tr key={i}>
-                  <td>{o?.id}</td>
-                  <td>₹{o?.total}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          lowStock.map((p) => (
+            <div key={p.id} className="border p-2 mt-2 text-red-500">
+              {p.name} - Stock: {p.stock}
+            </div>
+          ))
         )}
       </div>
 
-      {/* Stock */}
-      <div className="bg-white p-4 shadow">
-        <h2 className="font-bold mb-2">Stock</h2>
-
-        {(products || []).length === 0 ? (
-          <p>No products</p>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Stock</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.slice(0, 5).map((p) => (
-                <tr key={p?.id}>
-                  <td>{p?.name}</td>
-                  <td className={p?.stock <= 5 ? "text-red-500" : ""}>
-                    {p?.stock}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      {/* Recent Transactions */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold">Recent Transactions</h2>
+        {recent.map((o) => (
+          <div key={o.id} className="border p-2 mt-2">
+            ₹{o.total} - {o.paymentMethod}
+          </div>
+        ))}
       </div>
 
-    </div>
-  );
-}
-
-function Card({ title, value }) {
-  return (
-    <div className="bg-white shadow p-4 text-center">
-      <p>{title}</p>
-      <h2 className="text-xl font-bold">{value}</h2>
+      {/* Simple Graph */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold">Revenue Trend</h2>
+        <div className="flex gap-2 items-end h-40 bg-gray-100 p-2">
+          {orders.slice(-10).map((o, i) => (
+            <div
+              key={i}
+              className="bg-blue-500 w-6"
+              style={{ height: `${o.total / 10}px` }}
+              title={`₹${o.total}`}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

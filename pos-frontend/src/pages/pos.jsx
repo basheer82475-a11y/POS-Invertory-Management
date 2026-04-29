@@ -1,216 +1,280 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { BrowserMultiFormatReader } from "@zxing/library";
 
-export default function Pos() {
+// ===================== POS PAGE =====================
+export default function POSPage() {
   const [products, setProducts] = useState([]);
+  const [search, setSearch] = useState("");
   const [cart, setCart] = useState([]);
-  const [barcode, setBarcode] = useState("");
+  const [scannerActive, setScannerActive] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [received, setReceived] = useState(0);
   const [customer, setCustomer] = useState({ name: "", phone: "" });
-  const [discount, setDiscount] = useState(0);
-  const [payment, setPayment] = useState("Cash");
 
-  // Load products
+  // Load Products
   useEffect(() => {
-    const data = JSON.parse(localStorage.getItem("products")) || [];
-    setProducts(data);
+    setProducts([
+      { id: "123", name: "Item A", price: 100 },
+      { id: "456", name: "Item B", price: 200 },
+      { id: "789", name: "Item C", price: 300 },
+    ]);
   }, []);
 
-  // Add product to cart
+  // Barcode Scanner
+  useEffect(() => {
+    if (scannerActive) {
+      const reader = new BrowserMultiFormatReader();
+      reader.decodeFromVideoDevice(null, "video", (result) => {
+        if (result) {
+          handleScan(result.text);
+          setScannerActive(false);
+          reader.reset();
+        }
+      });
+    }
+  }, [scannerActive]);
+
+  const handleScan = (barcode) => {
+    const product = products.find((p) => p.id === barcode);
+    if (product) addToCart(product);
+    else alert("Product not found");
+  };
+
   const addToCart = (product) => {
-    const exists = cart.find((c) => c.id === product.id);
-    if (exists) {
-      setCart(
-        cart.map((c) =>
-          c.id === product.id ? { ...c, qty: c.qty + 1 } : c
-        )
-      );
-    } else {
-      setCart([...cart, { ...product, qty: 1 }]);
-    }
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === product.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.id === product.id ? { ...i, qty: i.qty + 1 } : i
+        );
+      }
+      return [...prev, { ...product, qty: 1 }];
+    });
   };
 
-  // Barcode add
-  const handleBarcode = (e) => {
-    if (e.key === "Enter") {
-      const found = products.find((p) => p.barcode === barcode);
-      if (found) addToCart(found);
-      setBarcode("");
-    }
-  };
-
-  // Update qty
-  const updateQty = (id, type) => {
-    setCart(
-      cart
-        .map((c) =>
-          c.id === id
-            ? { ...c, qty: type === "inc" ? c.qty + 1 : c.qty - 1 }
-            : c
-        )
-        .filter((c) => c.qty > 0)
+  const updateQty = (id, delta) => {
+    setCart((prev) =>
+      prev.map((i) =>
+        i.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i
+      )
     );
   };
 
-  // Remove item
   const removeItem = (id) => {
-    setCart(cart.filter((c) => c.id !== id));
+    setCart((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // Calculations
-  const subtotal = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
-  const discountAmount = (subtotal * discount) / 100;
-  const gst = (subtotal - discountAmount) * 0.18;
-  const total = subtotal - discountAmount + gst;
+  const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const tax = subtotal * 0.18;
+  const total = subtotal + tax;
+  const balance = received - total;
 
-  // PAYMENT
-  const handlePayment = () => {
-    if (cart.length === 0) return alert("Cart is empty");
-
-    const newOrder = {
-      
+  const placeOrder = () => {
+    const order = {
       id: Date.now(),
       items: cart,
       total,
-      payment,
+      paymentMethod,
       customer,
-      date: new Date().toLocaleString(),
+      time: new Date().toISOString(),
     };
 
-    // Save orders
-    const oldOrders = JSON.parse(localStorage.getItem("ordersList")) || [];
-    localStorage.setItem(
-      "ordersList",
-      JSON.stringify([...oldOrders, newOrder])
-    );
+    const orders = JSON.parse(localStorage.getItem("orders")) || [];
+    localStorage.setItem("orders", JSON.stringify([...orders, order]));
 
-    // Update revenue
-    const revenue = Number(localStorage.getItem("revenue")) || 0;
-    localStorage.setItem("revenue", revenue + total);
+    window.dispatchEvent(new Event("orderPlaced"));
 
-    // Update stock
-    let allProducts = JSON.parse(localStorage.getItem("products")) || [];
-
-    const updated = allProducts.map((p) => {
-      const found = cart.find((c) => c.id === p.id);
-      return found ? { ...p, stock: p.stock - found.qty } : p;
-    });
-
-    localStorage.setItem("products", JSON.stringify(updated));
-
-    // 🔔 Trigger dashboard update
-    window.dispatchEvent(new Event("dataUpdated"));
-
-    // Reset
+    printBill(order);
     setCart([]);
-    setCustomer({ name: "", phone: "" });
-
-    alert("Payment Successful!");
   };
 
+  const printBill = (order) => {
+    const w = window.open("", "PRINT", "height=600,width=400");
+    w.document.write(`
+      <h2>Receipt</h2>
+      <p>${new Date(order.time).toLocaleString()}</p>
+      <p>${order.customer.name} (${order.customer.phone})</p>
+      <ul>
+        ${order.items
+          .map((i) => `<li>${i.name} x${i.qty} = ₹${i.price * i.qty}</li>`)
+          .join("")}
+      </ul>
+      <h3>Total: ₹${order.total}</h3>
+      <p>Payment: ${order.paymentMethod}</p>
+    `);
+    w.print();
+    w.close();
+  };
+
+  const filteredProducts = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.id.includes(search)
+  );
+
   return (
-    <div className="p-4 grid md:grid-cols-2 gap-4">
-
-      {/* LEFT - PRODUCTS */}
+    <div className="p-6 grid grid-cols-3 gap-6">
+      {/* LEFT */}
       <div>
-        <h2 className="font-bold mb-2">Products</h2>
-
+        <h2 className="text-xl font-bold">Search / Scan</h2>
         <input
-          placeholder="Scan barcode"
-          className="border p-2 w-full mb-2"
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          onKeyDown={handleBarcode}
+          placeholder="Search name / SKU / barcode"
+          className="border p-2 w-full mt-2"
+          onChange={(e) => setSearch(e.target.value)}
         />
+        <button
+          onClick={() => setScannerActive(true)}
+          className="bg-blue-500 text-white px-3 py-2 mt-2"
+        >
+          Scan
+        </button>
+        {scannerActive && <video id="video" width="250" />}
 
-        <div className="grid grid-cols-2 gap-2">
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="border p-2 cursor-pointer"
+        {filteredProducts.map((p) => (
+          <div key={p.id} className="border p-2 mt-2">
+            {p.name} - ₹{p.price}
+            <button
               onClick={() => addToCart(p)}
+              className="bg-green-500 text-white px-2 ml-2"
             >
-              <p>{p.name}</p>
-              <p>₹{p.price}</p>
-              <p className={p.stock <= 5 ? "text-red-500" : ""}>
-                Stock: {p.stock}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* RIGHT - CART */}
-      <div>
-        <h2 className="font-bold mb-2">Cart</h2>
-
-        {/* Customer */}
-        <input
-          placeholder="Customer Name"
-          className="border p-2 w-full mb-2"
-          value={customer.name}
-          onChange={(e) =>
-            setCustomer({ ...customer, name: e.target.value })
-          }
-        />
-
-        <input
-          placeholder="Phone"
-          className="border p-2 w-full mb-2"
-          value={customer.phone}
-          onChange={(e) =>
-            setCustomer({ ...customer, phone: e.target.value })
-          }
-        />
-
-        {/* Cart items */}
-        {cart.map((c) => (
-          <div key={c.id} className="flex justify-between border p-2 mb-1">
-            <span>{c.name}</span>
-            <div>
-              <button onClick={() => updateQty(c.id, "dec")}>-</button>
-              <span className="px-2">{c.qty}</span>
-              <button onClick={() => updateQty(c.id, "inc")}>+</button>
-            </div>
-            <span>₹{c.price * c.qty}</span>
-            <button onClick={() => removeItem(c.id)}>x</button>
+              Add
+            </button>
           </div>
         ))}
+      </div>
 
-        {/* Discount */}
-        <select
-          className="border p-2 w-full mt-2"
-          onChange={(e) => setDiscount(Number(e.target.value))}
-        >
-          <option value="0">No Discount</option>
-          <option value="5">5%</option>
-          <option value="10">10%</option>
-          <option value="15">15%</option>
-        </select>
+      {/* CART */}
+      <div>
+        <h2 className="text-xl font-bold">Cart</h2>
+        {cart.map((i) => (
+          <div key={i.id} className="border p-2 mt-2">
+            {i.name} - ₹{i.price}
+            <div>
+              <button onClick={() => updateQty(i.id, -1)}>-</button>
+              {i.qty}
+              <button onClick={() => updateQty(i.id, 1)}>+</button>
+              <button onClick={() => removeItem(i.id)}>Remove</button>
+            </div>
+          </div>
+        ))}
+      </div>
 
-        {/* Payment */}
-        <select
-          className="border p-2 w-full mt-2"
-          onChange={(e) => setPayment(e.target.value)}
-        >
+      {/* BILLING */}
+      <div>
+        <h2 className="text-xl font-bold">Billing</h2>
+        <p>Subtotal: ₹{subtotal}</p>
+        <p>GST: ₹{tax.toFixed(2)}</p>
+        <p>Total: ₹{total.toFixed(2)}</p>
+
+        <select onChange={(e) => setPaymentMethod(e.target.value)}>
           <option>Cash</option>
           <option>UPI</option>
           <option>Card</option>
         </select>
 
-        {/* Summary */}
-        <div className="mt-3 space-y-1">
-          <p>Subtotal: ₹{subtotal}</p>
-          <p>Discount: ₹{discountAmount}</p>
-          <p>GST (18%): ₹{gst.toFixed(2)}</p>
-          <h2 className="font-bold">Total: ₹{total.toFixed(2)}</h2>
-        </div>
+        <input
+          placeholder="Received Amount"
+          type="number"
+          className="border p-2 w-full mt-2"
+          onChange={(e) => setReceived(Number(e.target.value))}
+        />
+
+        <p>Balance: ₹{balance.toFixed(2)}</p>
+
+        <input
+          placeholder="Customer Name"
+          className="border p-2 w-full mt-2"
+          onChange={(e) =>
+            setCustomer((c) => ({ ...c, name: e.target.value }))
+          }
+        />
+
+        <input
+          placeholder="Phone"
+          className="border p-2 w-full mt-2"
+          onChange={(e) =>
+            setCustomer((c) => ({ ...c, phone: e.target.value }))
+          }
+        />
 
         <button
-          onClick={handlePayment}
-          className="bg-green-600 text-white w-full mt-3 p-2"
+          onClick={placeOrder}
+          className="bg-purple-600 text-white px-4 py-2 mt-4 w-full"
         >
-          Pay Now
+          Generate & Print
+        </button>
+
+        <button
+          onClick={() => setCart([])}
+          className="bg-red-500 text-white px-4 py-2 mt-2 w-full"
+        >
+          Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+// ===================== DASHBOARD =====================
+export function Dashboard() {
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const load = () => {
+      const data = JSON.parse(localStorage.getItem("orders")) || [];
+      setOrders(data);
+    };
+
+    load();
+    window.addEventListener("orderPlaced", load);
+    return () => window.removeEventListener("orderPlaced", load);
+  }, []);
+
+  const today = new Date().toLocaleDateString();
+
+  const todaySales = orders
+    .filter((o) => new Date(o.time).toLocaleDateString() === today)
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+
+  const productMap = {};
+  orders.forEach((o) => {
+    o.items.forEach((i) => {
+      productMap[i.name] = (productMap[i.name] || 0) + i.qty;
+    });
+  });
+
+  const topProducts = Object.entries(productMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const recent = [...orders].slice(-5).reverse();
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      <div className="grid grid-cols-4 gap-4 mt-4">
+        <div className="bg-blue-100 p-3">Today: ₹{todaySales}</div>
+        <div className="bg-green-100 p-3">Revenue: ₹{totalRevenue}</div>
+        <div className="bg-yellow-100 p-3">Orders: {orders.length}</div>
+        <div className="bg-purple-100 p-3">
+          Products: {Object.keys(productMap).length}
+        </div>
+      </div>
+
+      <h2 className="mt-6 font-bold">Top Products</h2>
+      {topProducts.map(([name, qty], i) => (
+        <div key={i}>{name} - {qty}</div>
+      ))}
+
+      <h2 className="mt-6 font-bold">Recent Transactions</h2>
+      {recent.map((o) => (
+        <div key={o.id}>
+          ₹{o.total} - {o.paymentMethod}
+        </div>
+      ))}
     </div>
   );
 }
