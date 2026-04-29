@@ -4,17 +4,15 @@ const Navbar = ({ role }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
     navigate("/");
   };
 
   return (
     <div className="w-full bg-white shadow-md border-b px-6 py-3 flex justify-between items-center">
-
       {/* Logo */}
-      <h1 className="text-xl font-bold text-blue-600">
-        POS System
-      </h1>
+      <h1 className="text-xl font-bold text-blue-600">POS System</h1>
 
       {/* Search */}
       <div className="w-1/3">
@@ -27,7 +25,6 @@ const Navbar = ({ role }) => {
 
       {/* Right */}
       <div className="flex items-center gap-4">
-
         <span className="text-gray-600 capitalize">{role}</span>
 
         <button
@@ -36,10 +33,10 @@ const Navbar = ({ role }) => {
         >
           Logout
         </button>
-
       </div>
     </div>
   );
 };
 
 export default Navbar;
+
