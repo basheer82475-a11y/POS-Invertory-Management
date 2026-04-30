@@ -1,42 +1,45 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // Dummy users (replace with backend later)
-    const users = [
-      { email: "admin@gmail.com", password: "1234", role: "admin" },
-      { email: "manager@gmail.com", password: "1234", role: "manager" },
-      { email: "user@gmail.com", password: "1234", role: "user" },
-    ];
+try {
+      console.log("Attempting login with:", email);
+      const response = await API.post("/auth/login", { email, password });
+      console.log("Login response:", response.data);
+      
+      const { token, user } = response.data;
+      
+      // Save token and user
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
-    const user = users.find(
-      (u) => u.email === email && u.password === password
-    );
-
-    if (!user) {
-      setError("Invalid credentials");
-      return;
-    }
-
-    // Save user
-    localStorage.setItem("user", JSON.stringify(user));
-
-    // Role-based navigation
-    if (user.role === "admin") {
-      navigate("/dashboard");
-    } else if (user.role === "manager") {
-      navigate("/inventory");
-    } else {
-      navigate("/pos");
+      // Role-based navigation
+      if (user.role === "admin") {
+        navigate("/dashboard");
+      } else if (user.role === "manager") {
+        navigate("/inventory");
+      } else {
+        navigate("/pos");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      console.error("Error response:", err.response?.data);
+      setError(err.response?.data?.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
     }
   };
 
