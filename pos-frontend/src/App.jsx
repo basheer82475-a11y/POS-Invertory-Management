@@ -2,15 +2,16 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
-import Layout from "./components/Layout";
+import RoleRoute from "./components/RoleRoute";
 
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import Pos from "./pages/pos";
 
 import Products from "./pages/products";
-
-const isAuthenticated = () => !!localStorage.getItem("token");
+import Inventory from "./pages/Inventorypage";
+import AdminProducts from "./pages/adminProducts";
+import Unauthorized from "./pages/Unauthorized";
 
 function App() {
   return (
@@ -19,53 +20,78 @@ function App() {
         {/* Login Page */}
         <Route path="/" element={<Login />} />
 
+        {/* Unauthorized */}
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
         {/* Admin Routes */}
         <Route
           path="/dashboard"
           element={
-            isAuthenticated() ? (
-              <Layout role="admin">
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={["admin"]}>
                 <Dashboard />
-              </Layout>
-            ) : (
-              <Navigate to="/" replace />
-            )
+              </RoleRoute>
+            </ProtectedRoute>
           }
         />
 
-        {/* Shared Routes */}
+        {/* Admin: Manage Products */}
         <Route
-          path="/pos"
+          path="/admin/products"
           element={
-            isAuthenticated() ? (
-              <Layout role="user">
-                <Pos />
-              </Layout>
-            ) : (
-              <Navigate to="/" replace />
-            )
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={["admin"]}>
+                <AdminProducts />
+              </RoleRoute>
+            </ProtectedRoute>
           }
         />
 
-        {/* Products page for cashier/admin */}
+        {/* Inventory */}
+        <Route
+          path="/inventory"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={["admin", "manager"]}>
+                <Inventory />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Products (shared catalog for admin/manager) */}
         <Route
           path="/products"
           element={
-            isAuthenticated() ? (
-              <Layout role="user">
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={["admin", "manager"]}>
                 <div className="p-6">
                   <Products />
                 </div>
-              </Layout>
-            ) : (
-              <Navigate to="/" replace />
-            )
+              </RoleRoute>
+            </ProtectedRoute>
           }
         />
+
+        {/* POS */}
+        <Route
+          path="/pos"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={["admin", "manager", "cashier"]}>
+                <Pos />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
+
 

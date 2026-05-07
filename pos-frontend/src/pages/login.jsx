@@ -25,6 +25,7 @@ try {
       // Save token and user
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("role", user.role);
 
       // Role-based navigation
       if (user.role === "admin") {
@@ -34,6 +35,7 @@ try {
       } else {
         navigate("/pos");
       }
+
     } catch (err) {
       console.error("Login error:", err);
       console.error("Error response:", err.response?.data);
