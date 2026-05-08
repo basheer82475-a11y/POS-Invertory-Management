@@ -6,7 +6,6 @@ const getRole = () => localStorage.getItem("role");
 
 export default function ProtectedRoute({
   children,
-  requiredRole,
   layoutRole,
   className,
 }) {
@@ -16,9 +15,9 @@ export default function ProtectedRoute({
 
   const userRole = getRole();
 
-  if (requiredRole && userRole !== requiredRole) {
-    const fallback = userRole === "admin" ? "/admin/products" : "/pos";
-    return <Navigate to={fallback} replace />;
+  // If role is missing for any reason, block access (prevents accidental route access)
+  if (!userRole) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return (
@@ -27,4 +26,5 @@ export default function ProtectedRoute({
     </Layout>
   );
 }
+
 

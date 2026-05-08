@@ -1,6 +1,9 @@
-import React, { useEffect, useRef, useState } from "react"; import { Card, CardContent } from "@/components/ui/card"; import { Button } from "@/components/ui/button";
+import React, { useEffect, useRef, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-// NOTE: Uses html5-qrcode for camera scanning // npm install html5-qrcode import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
+
 
 const PRODUCTS = [ { id: 1, name: "Item A", price: 100, barcode: "111" }, { id: 2, name: "Item B", price: 200, barcode: "222" }, { id: 3, name: "Item C", price: 300, barcode: "333" } ];
 
