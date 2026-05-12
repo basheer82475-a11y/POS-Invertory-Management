@@ -35,17 +35,7 @@ function App() {
           }
         />
 
-        {/* Admin: Manage Products */}
-        <Route
-          path="/admin/products"
-          element={
-            <ProtectedRoute>
-              <RoleRoute allowedRoles={["admin"]}>
-                <AdminProducts />
-              </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
+
 
         {/* Inventory */}
         <Route
