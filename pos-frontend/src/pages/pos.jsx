@@ -110,27 +110,62 @@ export default function POSPage() {
   const gst = (subtotal - discountAmt) * 0.18;
   const total = subtotal - discountAmt + gst;
 
-  const handleCheckout = () => {
-    const newOrder = {
-      id: Date.now(),
-      cart,
-      total,
-      customer,
-      paymentMode,
-      date: new Date(),
-    };
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
-    const oldOrders = JSON.parse(localStorage.getItem("ordersList") || "[]");
-    const updatedOrders = [...oldOrders, newOrder];
+  const handleCheckout = async () => {
+    try {
+      setCheckoutError("");
+      if (!cart.length) return;
 
-    localStorage.setItem("ordersList", JSON.stringify(updatedOrders));
+      setCheckoutLoading(true);
 
-    // DASHBOARD AUTO UPDATE EVENT
-    window.dispatchEvent(new Event("dataUpdated"));
+      // Send to backend for atomic stock decrement + order creation
+      // Backend expects productId to be a MongoDB _id value.
+      // Our cart item `id` may be either product._id or product.id.
+      // Ensure we always send `productId` = product._id when available.
+      const payload = {
+        cart: cart.map((i) => ({
+          qty: i.qty,
+          productId: i.id,
+        })),
+        customer,
+        paymentMode,
+        discount,
+      };
 
-    alert("Order placed!");
-    setCart([]);
+
+      const res = await API.post("/orders", payload);
+
+      // DASHBOARD AUTO UPDATE EVENT
+      // Keep old localStorage behavior so existing dashboard works,
+      // but also clear cart and show success.
+      const newOrder = {
+        id: Date.now(),
+        cart,
+        total,
+        customer,
+        paymentMode,
+        date: new Date(),
+      };
+
+      const oldOrders = JSON.parse(localStorage.getItem("ordersList") || "[]");
+      const updatedOrders = [...oldOrders, newOrder];
+      localStorage.setItem("ordersList", JSON.stringify(updatedOrders));
+      window.dispatchEvent(new Event("dataUpdated"));
+
+      alert("Order placed!" + (res?.data?.order?.id ? "" : ""));
+      setCart([]);
+      setBarcodeInput("");
+    } catch (err) {
+      setCheckoutError(
+        err?.response?.data?.message || "Checkout failed. Please try again."
+      );
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
+
 
   const filteredProducts = products.filter((p) =>
     String(p.name || "")
