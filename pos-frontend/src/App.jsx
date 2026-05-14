@@ -49,6 +49,19 @@ function App() {
           }
         />
 
+        {/* Admin Products (CRUD) */}
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={["admin"]}>
+                <AdminProducts />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+
+
         {/* Products (shared catalog for admin/manager) */}
         <Route
           path="/products"
