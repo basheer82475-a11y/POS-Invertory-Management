@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode } from"html5-qrcode";
 
 import { API } from "../services/api";
 
